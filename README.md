@@ -20,6 +20,26 @@ Prerequisites (Windows)
      - `java -version` → should print version
      - `echo $env:JAVA_HOME` → should be like `C:\Program Files\Java\jdk-17`
 
+Install Spark (PySpark)
+- Easiest: install PySpark in your venv
+  - `pip install pyspark`
+- Verify:
+  - `python -c "import pyspark; print(pyspark.__version__)"`
+- Tip (Windows): ensure workers use your venv Python
+  - `$py = (python -c "import sys; print(sys.executable)")`
+  - `$env:PYSPARK_PYTHON = $py; $env:PYSPARK_DRIVER_PYTHON = $py`
+
+Install Flink (PyFlink)
+- Simple install (may require matching apache-beam version):
+  - `pip install apache-flink`
+- If you hit version errors, use a compatible pair (example):
+  - `pip uninstall -y apache-flink apache-beam`
+  - `pip install "apache-flink==1.17.0" "apache-beam==2.43.0"`
+- Make PyFlink use your venv Python:
+  - `$py = (python -c "import sys; print(sys.executable)")`
+  - `$env:PYFLINK_CLIENT_EXECUTABLE = $py; $env:PYFLINK_PYTHON = $py`
+- Optional native Flink (Java cluster) is not required for this project.
+
 Get the code
 - With git: `git clone <this-repo-url>` then `cd` into the folder
 - Or download as ZIP, extract (e.g., `C:\Users\<you>\Desktop\big`) and open PowerShell in that folder
