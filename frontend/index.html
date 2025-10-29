@@ -1,0 +1,381 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Big Benchmark</title>
+  <style>
+    :root {
+      /* Dark theme (default) */
+      --bg: #0e141b; /* solid background */
+      --panel: #101621;
+      --panel-2: #0f1420;
+      --text: #e6edf3;
+      --muted: #92a1b3;
+      --border: #1e2a3b;
+      --accent: #4c9aff;
+      --ok: #2ecc71;
+      --err: #ff5252;
+      --warn: #ffb020;
+      --badge: #0e1a2b;
+      --field: #0e1522;
+      --thead: #0e1522;
+    }
+    body.light {
+      /* Light theme overrides */
+      --bg: #f6f8fb; /* solid background */
+      --panel: #ffffff;
+      --panel-2: #fafcff;
+      --text: #0e1726;
+      --muted: #49566b;
+      --border: #d8e0ea;
+      --accent: #2f6bff;
+      --ok: #1e8e3e;
+      --err: #d93025;
+      --warn: #b06d00;
+      --badge: #eef3ff;
+      --field: #ffffff;
+      --thead: #f2f6fb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color: var(--text); background: var(--bg); }
+    .container { max-width: 1080px; margin: 0 auto; padding: 16px 20px; }
+    header { display:flex; justify-content: space-between; align-items:flex-start; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
+    .title { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+    .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .btn { background: #152034; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 120ms ease; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.25); }
+    .btn.primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #2c4cff; }
+    .switch { display:flex; gap:8px; align-items:center; color: var(--muted); }
+    .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+    @media (min-width: 980px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .row { display: grid; grid-template-columns: repeat(4, minmax(0, 220px)); gap: 12px; align-items: end; }
+    @media (max-width: 700px) { .row { grid-template-columns: 1fr 1fr; } }
+    label { font-size: 12px; color: var(--muted); display:block; }
+    input[type="number"] { width: 100%; background: var(--field); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+    .checkboxes { display:flex; gap:16px; flex-wrap: wrap; }
+    .badge { display:inline-flex; align-items:center; gap:6px; background: var(--badge); border: 1px solid var(--border); padding: 6px 10px; border-radius: 999px; }
+    .legend { display:flex; gap:10px; align-items:center; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display:inline-block; }
+    .dot.hadoop { background:#1565c0; } .dot.spark{ background:#ef6c00; } .dot.flink{ background:#2e7d32; }
+    .muted { color: var(--muted); }
+    /* Chart */
+    .chart { display: grid; gap: 12px; }
+    .bar-row { display: grid; grid-template-columns: 120px 1fr 90px; align-items: center; gap: 10px; }
+    .bar-label { font-weight: 600; }
+    .bar-track { position: relative; height: 18px; background: #0c1320; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .bar-fill { position: absolute; left: 0; top: 0; height: 100%; width: 0%; border-radius: 10px; transition: width 600ms cubic-bezier(.2,.8,.2,1); }
+    .fw-hadoop { background: linear-gradient(90deg, #1565c0, #42a5f5); }
+    .fw-spark { background: linear-gradient(90deg, #ef6c00, #ff9800); }
+    .fw-flink { background: linear-gradient(90deg, #2e7d32, #66bb6a); }
+    .bar-value { text-align: right; font-variant-numeric: tabular-nums; }
+    /* Table */
+    .table-wrap { overflow: auto; max-height: 420px; border: 1px solid var(--border); border-radius: 12px; }
+    table { border-collapse: separate; border-spacing:0; width: 100%; min-width: 640px; }
+    thead th { position: sticky; top: 0; background: var(--thead); border-bottom: 1px solid var(--border); padding: 10px; text-align: left; font-size: 12px; color: var(--muted); backdrop-filter: saturate(1.2) blur(6px); }
+    tbody td { padding: 10px; border-bottom: 1px solid var(--border); }
+    .status.badge { padding: 4px 10px; }
+    .status.ok { color: var(--ok); border-color: #214e39; background: #0d1f18; }
+    .status.err { color: var(--err); border-color: #4d1b1b; background: #1a0d0d; }
+    .status.muted { color: var(--muted); }
+    .best { outline: 2px solid rgba(76,154,255,0.15); background: linear-gradient(180deg, rgba(76,154,255,0.05), transparent); }
+
+    /* Responsive tweaks */
+    @media (max-width: 980px) {
+      .container { padding: 16px; }
+      .bar-row { grid-template-columns: 100px 1fr 72px; }
+      table { min-width: 560px; }
+    }
+    @media (max-width: 600px) {
+      header { flex-direction: column; align-items: stretch; gap: 12px; }
+      .controls { gap: 8px; }
+      .controls .btn { width: 100%; }
+      .row { grid-template-columns: 1fr; }
+      .title { font-size: 16px; }
+      .container { padding: 12px; }
+      .bar-row { grid-template-columns: 90px 1fr 64px; }
+      table { min-width: 480px; }
+    }
+
+    /* Loading overlay */
+    .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(8,12,18,0.55); backdrop-filter: blur(3px); z-index: 999; }
+    .overlay.show { display: flex; }
+    .spinner {
+      width: 54px; height: 54px; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.15);
+      border-top-color: var(--accent);
+      animation: spin 900ms linear infinite;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">Big Benchmark: Hadoop vs Spark vs Flink</div>
+      <div class="controls">
+        <label class="switch"><input type="checkbox" id="fw_hadoop" checked /> Hadoop</label>
+        <label class="switch"><input type="checkbox" id="fw_spark" checked /> Spark</label>
+        <label class="switch"><input type="checkbox" id="fw_flink" checked /> Flink</label>
+        <button class="btn primary" id="btn_run">Start Run</button>
+        <button class="btn" id="btn_clear">Clear</button>
+        <label class="switch"><input type="checkbox" id="auto_scroll" checked /> Auto-scroll</label>
+        <label class="switch"><input type="checkbox" id="dark_mode" checked /> Dark</label>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row" style="margin-bottom: 8px;">
+          <label>Dataset (MB)
+            <input type="number" id="dataset_mb" min="1" value="50">
+          </label>
+          <label>Parallelism
+            <input type="number" id="parallelism" min="1" value="4">
+          </label>
+          <label>Iterations
+            <input type="number" id="iterations" min="1" value="1">
+          </label>
+        </div>
+        <div class="legend">
+          <span class="dot hadoop"></span> Hadoop
+          <span class="dot spark"></span> Spark
+          <span class="dot flink"></span> Flink
+          <span class="muted" style="margin-left:auto">WordCount on synthetic data</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">Live Throughput</h3>
+        <div id="best_summary" class="muted" style="margin-bottom:8px"></div>
+        <div>
+          <div class="muted" style="margin-bottom:6px">Throughput (records/sec)</div>
+          <div id="chart" class="chart">
+            <div class="bar-row" data-fw="hadoop">
+              <div class="bar-label">Hadoop</div>
+              <div class="bar-track"><div class="bar-fill fw-hadoop"></div></div>
+              <div class="bar-value">0</div>
+            </div>
+            <div class="bar-row" data-fw="spark">
+              <div class="bar-label">Spark</div>
+              <div class="bar-track"><div class="bar-fill fw-spark"></div></div>
+              <div class="bar-value">0</div>
+            </div>
+            <div class="bar-row" data-fw="flink">
+              <div class="bar-label">Flink</div>
+              <div class="bar-track"><div class="bar-fill fw-flink"></div></div>
+              <div class="bar-value">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <div class="card" style="margin-top: 16px;">
+    <h3 style="margin-top:0">Live Results</h3>
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Run</th>
+          <th>Iteration</th>
+          <th>Framework</th>
+          <th>Status</th>
+          <th>Elapsed (s)</th>
+          <th>Records</th>
+          <th>Throughput (rec/s)</th>
+        </tr>
+      </thead>
+      <tbody id="results"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div id="loading" class="overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <script>
+    const resultsTbody = document.getElementById('results');
+    const btnRun = document.getElementById('btn_run');
+    const btnClear = document.getElementById('btn_clear');
+    const autoScroll = document.getElementById('auto_scroll');
+    const darkMode = document.getElementById('dark_mode');
+    const loading = document.getElementById('loading');
+    const inputs = {
+      dataset: document.getElementById('dataset_mb'),
+      parallelism: document.getElementById('parallelism'),
+      iterations: document.getElementById('iterations'),
+      fw_hadoop: document.getElementById('fw_hadoop'),
+      fw_spark: document.getElementById('fw_spark'),
+      fw_flink: document.getElementById('fw_flink'),
+    };
+
+    const socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+
+    const rowKey = (runId, iteration, fw) => `${runId}|${iteration}|${fw}`;
+    const rows = new Map();
+    let currentRunId = null;
+    const bestSummary = document.getElementById('best_summary');
+    const chartEl = document.getElementById('chart');
+    let chartState = { runId: null, iteration: null, maxThr: 0, byFw: { hadoop: 0, spark: 0, flink: 0 } };
+
+    function ensureRow(runId, iteration, fw) {
+      const key = rowKey(runId, iteration, fw);
+      if (rows.has(key)) return rows.get(key);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${runId.slice(0, 6)}</td>
+        <td>${iteration || '-'}</td>
+        <td>${fw || '-'}</td>
+        <td><span class="status badge muted">pending</span></td>
+        <td class="elapsed"></td>
+        <td class="records"></td>
+        <td class="throughput"></td>
+      `;
+      resultsTbody.prepend(tr);
+      rows.set(key, tr);
+      return tr;
+    }
+
+    function updateBest(runId, iteration) {
+      // Clear previous best marks for this iteration
+      let best = { tr: null, thr: -1, fw: null };
+      rows.forEach((tr, key) => {
+        const [rid, iter, fw] = key.split('|');
+        if (rid !== runId || iter !== iteration) return;
+        tr.classList.remove('best');
+        const status = tr.querySelector('.status')?.textContent || '';
+        const thrTxt = tr.querySelector('.throughput')?.textContent || '';
+        const thr = parseFloat(thrTxt);
+        if (status === 'ok' && !Number.isNaN(thr) && thr > best.thr) {
+          best = { tr, thr, fw };
+          best.fw = fw;
+        }
+      });
+      if (best.tr) {
+        best.tr.classList.add('best');
+        bestSummary.textContent = `Best performer (iteration ${iteration}): ${best.fw} at ${best.thr.toFixed(1)} rec/s`;
+      } else if (currentRunId === runId) {
+        bestSummary.textContent = 'Best performer: awaiting completed results...';
+      }
+    }
+
+    function resetChart(runId, iteration) {
+      chartState = { runId, iteration, maxThr: 0, byFw: { hadoop: 0, spark: 0, flink: 0 } };
+      chartEl.querySelectorAll('.bar-fill').forEach(el => el.style.width = '0%');
+      chartEl.querySelectorAll('.bar-value').forEach(el => el.textContent = '0');
+    }
+
+    function updateChart(runId, iteration) {
+      if (chartState.runId !== runId || chartState.iteration !== iteration) return;
+      const maxThr = Math.max(1, chartState.byFw.hadoop, chartState.byFw.spark, chartState.byFw.flink);
+      chartState.maxThr = maxThr;
+      ['hadoop','spark','flink'].forEach(fw => {
+        const row = chartEl.querySelector(`.bar-row[data-fw="${fw}"]`);
+        if (!row) return;
+        const val = chartState.byFw[fw] || 0;
+        const pct = Math.max(0, Math.min(100, (val / maxThr) * 100));
+        row.querySelector('.bar-fill').style.width = pct.toFixed(2) + '%';
+        row.querySelector('.bar-value').textContent = val ? val.toFixed(1) : '0';
+      });
+    }
+
+    socket.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'run_started') {
+        currentRunId = msg.run_id;
+        bestSummary.textContent = 'Best performer: awaiting results...';
+        // Reset chart for the new run; iteration will be set on iteration_started
+        loading.classList.add('show');
+        setDisabled(true);
+      }
+      if (msg.type === 'iteration_started') {
+        resetChart(msg.run_id, msg.iteration);
+      }
+      if (msg.type === 'job_started') {
+        const tr = ensureRow(msg.run_id, msg.iteration, msg.framework);
+        const st = tr.querySelector('.status');
+        st.textContent = 'running';
+        st.className = 'status badge muted';
+      } else if (msg.type === 'job_finished') {
+        const m = msg.metrics || {};
+        const tr = ensureRow(msg.run_id, msg.iteration, msg.framework);
+        const status = m.status || 'ok';
+        const st = tr.querySelector('.status');
+        st.textContent = status;
+        st.className = 'status badge ' + (status === 'ok' ? 'ok' : (status === 'unavailable' ? 'muted' : 'err'));
+        if (m.elapsed_sec != null) tr.querySelector('.elapsed').textContent = m.elapsed_sec.toFixed(3);
+        if (m.records != null) tr.querySelector('.records').textContent = m.records;
+        if (m.throughput_rps != null) tr.querySelector('.throughput').textContent = m.throughput_rps.toFixed(1);
+        // Recompute best only for this iteration in this run
+        updateBest(msg.run_id, msg.iteration);
+        // Update chart values
+        if (status === 'ok' && typeof m.throughput_rps === 'number') {
+          chartState.byFw[msg.framework] = m.throughput_rps;
+          updateChart(msg.run_id, msg.iteration);
+        }
+        if (autoScroll.checked) {
+          resultsTbody.parentElement.scrollTop = 0;
+        }
+      }
+      if (msg.type === 'run_finished') {
+        loading.classList.remove('show');
+        setDisabled(false);
+      }
+    };
+
+    btnClear.onclick = () => {
+      resultsTbody.innerHTML = '';
+      rows.clear();
+      resetChart(currentRunId, '');
+      bestSummary.textContent = '';
+    };
+
+    // Dark mode toggle
+    (function initTheme() {
+      const saved = localStorage.getItem('bb_theme');
+      if (saved === 'light') {
+        document.body.classList.add('light');
+        darkMode.checked = false;
+      } else {
+        document.body.classList.remove('light');
+        darkMode.checked = true;
+      }
+    })();
+
+    darkMode.onchange = () => {
+      const isDark = darkMode.checked;
+      document.body.classList.toggle('light', !isDark);
+      localStorage.setItem('bb_theme', isDark ? 'dark' : 'light');
+    };
+
+    function setDisabled(disabled) {
+      btnRun.disabled = disabled;
+      btnClear.disabled = disabled;
+      Object.values(inputs).forEach(el => { if (el) el.disabled = disabled; });
+    }
+
+    btnRun.onclick = async () => {
+      const frameworks = [];
+      if (document.getElementById('fw_hadoop').checked) frameworks.push('hadoop');
+      if (document.getElementById('fw_spark').checked) frameworks.push('spark');
+      if (document.getElementById('fw_flink').checked) frameworks.push('flink');
+      const payload = {
+        frameworks,
+        dataset_mb: Number(document.getElementById('dataset_mb').value),
+        parallelism: Number(document.getElementById('parallelism').value),
+        iterations: Number(document.getElementById('iterations').value),
+        job: 'wordcount'
+      };
+      const res = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!data.accepted) alert('Run was not accepted: ' + (data.message || 'unknown'));
+    };
+  </script>
+</body>
+</html>
+
+

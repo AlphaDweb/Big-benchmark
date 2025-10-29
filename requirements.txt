@@ -1,0 +1,13 @@
+fastapi==0.115.2
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+starlette==0.40.0
+aiofiles==24.1.0
+psutil==6.0.0
+
+# Optional for running engines locally from Python
+# Install as needed; orchestrator handles missing imports gracefully
+pyspark==3.5.2
+apache-flink==1.20.0
+
+
