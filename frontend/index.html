@@ -48,7 +48,8 @@
     .btn.primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); border-color: #2c4cff; }
     .switch { display:flex; gap:8px; align-items:center; color: var(--muted); }
     .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
-    @media (min-width: 980px) { .grid { grid-template-columns: 1fr 1fr; } }
+    /* Always stack cards vertically: inputs above, visuals below */
+    @media (min-width: 980px) { .grid { grid-template-columns: 1fr; } }
     .card { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
     .row { display: grid; grid-template-columns: repeat(4, minmax(0, 220px)); gap: 12px; align-items: end; }
     @media (max-width: 700px) { .row { grid-template-columns: 1fr 1fr; } }
@@ -142,21 +143,6 @@
           <span class="dot spark"></span> Spark
           <span class="dot flink"></span> Flink
           <span class="muted" style="margin-left:auto">WordCount on synthetic data</span>
-        </div>
-        <div style="margin-top:12px">
-          <div class="muted" style="margin-bottom:6px">Overall comparison (latest throughput)</div>
-          <div id="overall_bars" class="chart">
-            <div class="bar-row" data-fw="spark-overall">
-              <div class="bar-label">Spark</div>
-              <div class="bar-track"><div id="overall_spark_fill" class="bar-fill fw-spark"></div></div>
-              <div id="overall_spark_val" class="bar-value">0</div>
-            </div>
-            <div class="bar-row" data-fw="flink-overall">
-              <div class="bar-label">Flink</div>
-              <div class="bar-track"><div id="overall_flink_fill" class="bar-fill fw-flink"></div></div>
-              <div id="overall_flink_val" class="bar-value">0</div>
-            </div>
-          </div>
         </div>
       </div>
 
