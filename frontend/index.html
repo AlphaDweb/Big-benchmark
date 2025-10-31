@@ -162,6 +162,29 @@
               <div class="bar-value">0</div>
             </div>
           </div>
+          <div style="margin-top:14px; display:grid; gap:10px;">
+            <div class="muted">Trends (per iteration)</div>
+            <div style="display:grid; gap:10px;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="bar-label">Spark trend</span>
+                  <span id="spark_avg" class="muted" style="font-variant-numeric: tabular-nums;">avg 0</span>
+                </div>
+                <svg id="spark_sparkline" height="40" style="width:100%"></svg>
+              </div>
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="bar-label">Flink trend</span>
+                  <span id="flink_avg" class="muted" style="font-variant-numeric: tabular-nums;">avg 0</span>
+                </div>
+                <svg id="flink_sparkline" height="40" style="width:100%"></svg>
+              </div>
+            </div>
+            <div id="ratio_card" class="badge" style="justify-content:space-between; padding:10px 12px;">
+              <span>Speedup (Spark vs Flink)</span>
+              <strong id="speedup" style="font-variant-numeric: tabular-nums;">1.00x</strong>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -201,10 +224,14 @@
       dataset: document.getElementById('dataset_mb'),
       parallelism: document.getElementById('parallelism'),
       iterations: document.getElementById('iterations'),
-      fw_hadoop: document.getElementById('fw_hadoop'),
       fw_spark: document.getElementById('fw_spark'),
       fw_flink: document.getElementById('fw_flink'),
     };
+    const sparkSvg = document.getElementById('spark_sparkline');
+    const flinkSvg = document.getElementById('flink_sparkline');
+    const speedupEl = document.getElementById('speedup');
+    const sparkAvgEl = document.getElementById('spark_avg');
+    const flinkAvgEl = document.getElementById('flink_avg');
 
     const socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
 
@@ -214,6 +241,7 @@
     const bestSummary = document.getElementById('best_summary');
     const chartEl = document.getElementById('chart');
     let chartState = { runId: null, iteration: null, maxThr: 0, byFw: { spark: 0, flink: 0 } };
+    let history = { spark: [], flink: [] };
 
     function ensureRow(runId, iteration, fw) {
       const key = rowKey(runId, iteration, fw);
@@ -257,9 +285,14 @@
     }
 
     function resetChart(runId, iteration) {
-      chartState = { runId, iteration, maxThr: 0, byFw: { hadoop: 0, spark: 0, flink: 0 } };
+      chartState = { runId, iteration, maxThr: 0, byFw: { spark: 0, flink: 0 } };
       chartEl.querySelectorAll('.bar-fill').forEach(el => el.style.width = '0%');
       chartEl.querySelectorAll('.bar-value').forEach(el => el.textContent = '0');
+      history = { spark: [], flink: [] };
+      drawSparkline(sparkSvg, []);
+      drawSparkline(flinkSvg, []);
+      sparkAvgEl.textContent = 'avg 0';
+      flinkAvgEl.textContent = 'avg 0';
     }
 
     function updateChart(runId, iteration) {
@@ -309,6 +342,17 @@
         if (status === 'ok' && typeof m.throughput_rps === 'number') {
           chartState.byFw[msg.framework] = m.throughput_rps;
           updateChart(msg.run_id, msg.iteration);
+          // Update trend lines and averages
+          if (!Number.isNaN(m.throughput_rps)) {
+            history[msg.framework].push(m.throughput_rps);
+            drawSparkline(msg.framework === 'spark' ? sparkSvg : flinkSvg, history[msg.framework]);
+            const avg = history[msg.framework].reduce((a,b)=>a+b,0) / history[msg.framework].length;
+            (msg.framework === 'spark' ? sparkAvgEl : flinkAvgEl).textContent = `avg ${avg.toFixed(1)}`;
+          }
+          // Speedup Spark vs Flink
+          const s = history.spark.length ? history.spark[history.spark.length-1] : 0;
+          const f = history.flink.length ? history.flink[history.flink.length-1] : 0;
+          if (s > 0 && f > 0) speedupEl.textContent = (s / f).toFixed(2) + 'x';
         }
         if (autoScroll.checked) {
           resultsTbody.parentElement.scrollTop = 0;
@@ -366,6 +410,36 @@
       const data = await res.json();
       if (!data.accepted) alert('Run was not accepted: ' + (data.message || 'unknown'));
     };
+  </script>
+  <script>
+    // Minimal sparkline renderer (no external libs)
+    function drawSparkline(svg, data) {
+      if (!svg) return;
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      const w = svg.clientWidth || (svg.parentElement ? svg.parentElement.clientWidth : 300) || 300;
+      const hAttr = svg.getAttribute('height');
+      const h = hAttr ? parseInt(hAttr) : 40;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      if (!data || data.length === 0) return;
+      const max = Math.max(...data);
+      const min = Math.min(...data);
+      const pad = 2;
+      const scaleX = (w - pad*2) / Math.max(1, data.length - 1);
+      const denom = Math.max(1e-6, (max - min) || 1);
+      const scaleY = (h - pad*2) / denom;
+      let d = '';
+      data.forEach((v, i) => {
+        const x = pad + i * scaleX;
+        const y = h - pad - (v - min) * scaleY;
+        d += (i === 0 ? 'M' : 'L') + x + ' ' + y + ' ';
+      });
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d.trim());
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'var(--accent)');
+      path.setAttribute('stroke-width', '2');
+      svg.appendChild(path);
+    }
   </script>
 </body>
 </html>
