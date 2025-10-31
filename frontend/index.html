@@ -184,6 +184,26 @@
               <span>Speedup (Spark vs Flink)</span>
               <strong id="speedup" style="font-variant-numeric: tabular-nums;">1.00x</strong>
             </div>
+            <div id="best_card" class="badge" style="justify-content:space-between; padding:10px 12px;">
+              <span>Best engine (overall)</span>
+              <strong id="best_engine" style="font-variant-numeric: tabular-nums;">—</strong>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div class="card" style="padding:10px;">
+                <div class="muted">Spark latest</div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px;">
+                  <div><small class="muted">Throughput</small><div id="spark_last_thr" style="font-variant-numeric: tabular-nums; font-weight:700;">0</div></div>
+                  <div><small class="muted">Elapsed (s)</small><div id="spark_last_elapsed" style="font-variant-numeric: tabular-nums; font-weight:700;">0</div></div>
+                </div>
+              </div>
+              <div class="card" style="padding:10px;">
+                <div class="muted">Flink latest</div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px;">
+                  <div><small class="muted">Throughput</small><div id="flink_last_thr" style="font-variant-numeric: tabular-nums; font-weight:700;">0</div></div>
+                  <div><small class="muted">Elapsed (s)</small><div id="flink_last_elapsed" style="font-variant-numeric: tabular-nums; font-weight:700;">0</div></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -232,6 +252,11 @@
     const speedupEl = document.getElementById('speedup');
     const sparkAvgEl = document.getElementById('spark_avg');
     const flinkAvgEl = document.getElementById('flink_avg');
+    const sparkLastThr = document.getElementById('spark_last_thr');
+    const sparkLastElapsed = document.getElementById('spark_last_elapsed');
+    const flinkLastThr = document.getElementById('flink_last_thr');
+    const flinkLastElapsed = document.getElementById('flink_last_elapsed');
+    const bestEngineEl = document.getElementById('best_engine');
 
     const socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
 
@@ -353,6 +378,22 @@
           const s = history.spark.length ? history.spark[history.spark.length-1] : 0;
           const f = history.flink.length ? history.flink[history.flink.length-1] : 0;
           if (s > 0 && f > 0) speedupEl.textContent = (s / f).toFixed(2) + 'x';
+          // Update KPI cards
+          if (msg.framework === 'spark') {
+            sparkLastThr.textContent = m.throughput_rps.toFixed(1);
+            if (typeof m.elapsed_sec === 'number') sparkLastElapsed.textContent = m.elapsed_sec.toFixed(2);
+          } else if (msg.framework === 'flink') {
+            flinkLastThr.textContent = m.throughput_rps.toFixed(1);
+            if (typeof m.elapsed_sec === 'number') flinkLastElapsed.textContent = m.elapsed_sec.toFixed(2);
+          }
+          // Best engine overall (by average throughput so far)
+          const avgSpark = history.spark.length ? history.spark.reduce((a,b)=>a+b,0)/history.spark.length : 0;
+          const avgFlink = history.flink.length ? history.flink.reduce((a,b)=>a+b,0)/history.flink.length : 0;
+          if (avgSpark > 0 || avgFlink > 0) {
+            if (avgSpark > avgFlink) bestEngineEl.textContent = `Spark (${avgSpark.toFixed(1)} rec/s avg)`;
+            else if (avgFlink > avgSpark) bestEngineEl.textContent = `Flink (${avgFlink.toFixed(1)} rec/s avg)`;
+            else bestEngineEl.textContent = `Tie (${avgSpark.toFixed(1)} rec/s avg)`;
+          }
         }
         if (autoScroll.checked) {
           resultsTbody.parentElement.scrollTop = 0;
@@ -439,6 +480,17 @@
       path.setAttribute('stroke', 'var(--accent)');
       path.setAttribute('stroke-width', '2');
       svg.appendChild(path);
+      // Draw points so single-value series are visible
+      data.forEach((v, i) => {
+        const cx = pad + i * scaleX;
+        const cy = h - pad - (v - min) * scaleY;
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', cx);
+        dot.setAttribute('cy', cy);
+        dot.setAttribute('r', 2.5);
+        dot.setAttribute('fill', 'var(--accent)');
+        svg.appendChild(dot);
+      });
     }
   </script>
 </body>
