@@ -116,7 +116,6 @@
     <header>
       <div class="title">Big Benchmark: Hadoop vs Spark vs Flink</div>
       <div class="controls">
-        <label class="switch"><input type="checkbox" id="fw_hadoop" checked /> Hadoop</label>
         <label class="switch"><input type="checkbox" id="fw_spark" checked /> Spark</label>
         <label class="switch"><input type="checkbox" id="fw_flink" checked /> Flink</label>
         <button class="btn primary" id="btn_run">Start Run</button>
@@ -140,7 +139,6 @@
           </label>
         </div>
         <div class="legend">
-          <span class="dot hadoop"></span> Hadoop
           <span class="dot spark"></span> Spark
           <span class="dot flink"></span> Flink
           <span class="muted" style="margin-left:auto">WordCount on synthetic data</span>
@@ -153,11 +151,6 @@
         <div>
           <div class="muted" style="margin-bottom:6px">Throughput (records/sec)</div>
           <div id="chart" class="chart">
-            <div class="bar-row" data-fw="hadoop">
-              <div class="bar-label">Hadoop</div>
-              <div class="bar-track"><div class="bar-fill fw-hadoop"></div></div>
-              <div class="bar-value">0</div>
-            </div>
             <div class="bar-row" data-fw="spark">
               <div class="bar-label">Spark</div>
               <div class="bar-track"><div class="bar-fill fw-spark"></div></div>
@@ -220,7 +213,7 @@
     let currentRunId = null;
     const bestSummary = document.getElementById('best_summary');
     const chartEl = document.getElementById('chart');
-    let chartState = { runId: null, iteration: null, maxThr: 0, byFw: { hadoop: 0, spark: 0, flink: 0 } };
+    let chartState = { runId: null, iteration: null, maxThr: 0, byFw: { spark: 0, flink: 0 } };
 
     function ensureRow(runId, iteration, fw) {
       const key = rowKey(runId, iteration, fw);
@@ -271,9 +264,9 @@
 
     function updateChart(runId, iteration) {
       if (chartState.runId !== runId || chartState.iteration !== iteration) return;
-      const maxThr = Math.max(1, chartState.byFw.hadoop, chartState.byFw.spark, chartState.byFw.flink);
+      const maxThr = Math.max(1, chartState.byFw.spark, chartState.byFw.flink);
       chartState.maxThr = maxThr;
-      ['hadoop','spark','flink'].forEach(fw => {
+      ['spark','flink'].forEach(fw => {
         const row = chartEl.querySelector(`.bar-row[data-fw="${fw}"]`);
         if (!row) return;
         const val = chartState.byFw[fw] || 0;
@@ -360,7 +353,6 @@
 
     btnRun.onclick = async () => {
       const frameworks = [];
-      if (document.getElementById('fw_hadoop').checked) frameworks.push('hadoop');
       if (document.getElementById('fw_spark').checked) frameworks.push('spark');
       if (document.getElementById('fw_flink').checked) frameworks.push('flink');
       const payload = {

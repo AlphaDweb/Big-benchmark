@@ -20,7 +20,7 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 
 class RunRequest(BaseModel):
-    frameworks: List[str] = Field(default_factory=lambda: ["hadoop", "spark", "flink"])  # any subset
+    frameworks: List[str] = Field(default_factory=lambda: ["spark", "flink"])  # any subset
     dataset_mb: int = 50
     parallelism: int = 4
     iterations: int = 1
@@ -54,7 +54,7 @@ async def _favicon() -> HTMLResponse:
 async def api_run(req: RunRequest) -> RunResponse:
     orchestrator = BenchmarkOrchestrator.get_instance()
     selection = FrameworkSelection(
-        use_hadoop="hadoop" in req.frameworks,
+        use_hadoop=False,
         use_spark="spark" in req.frameworks,
         use_flink="flink" in req.frameworks,
     )

@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 
 class HadoopRunner:
@@ -18,14 +18,24 @@ class HadoopRunner:
         if job != "wordcount":
             raise RuntimeError("Hadoop runner supports only 'wordcount' job")
 
-        # Check availability
-        if shutil.which("hadoop") is None:
+        # Check availability and resolve hadoop path
+        hadoop_exe: Optional[str] = shutil.which("hadoop")
+        if hadoop_exe is None:
             raise RuntimeError("hadoop command not found on PATH")
 
         streaming_jar = os.environ.get("HADOOP_STREAMING_JAR")
         if not streaming_jar or not os.path.exists(streaming_jar):
             # Try to auto-discover from HADOOP_HOME/share/hadoop/tools/lib
             hh = os.environ.get("HADOOP_HOME")
+            if not hh:
+                # Try to derive from the resolved hadoop executable path
+                try:
+                    bin_dir = os.path.dirname(hadoop_exe)
+                    root_dir = os.path.dirname(bin_dir)
+                    if os.path.isdir(root_dir) and os.path.exists(os.path.join(root_dir, "share")):
+                        hh = root_dir
+                except Exception:
+                    hh = None
             guessed = None
             if hh:
                 tools = os.path.join(hh, "share", "hadoop", "tools", "lib")
@@ -67,7 +77,7 @@ class HadoopRunner:
             return f'"{p}"'
 
         cmdline = (
-            f"hadoop jar {q(streaming_jar)} "
+            f"{q(hadoop_exe)} jar {q(streaming_jar)} "
             f"-mapper {mapper_cmd} -reducer {reducer_cmd} "
             f"-input {q(input_path)} -output {q(output_path)} "
             f"-numReduceTasks {max(1, parallelism // 2)}"

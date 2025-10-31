@@ -86,8 +86,7 @@ class BenchmarkOrchestrator:
 
     async def _execute_run(self, run_id: str, selection: FrameworkSelection, config: RunConfig) -> None:
         jobs: List[Tuple[str, Any]] = []
-        if selection.use_hadoop:
-            jobs.append(("hadoop", HadoopRunner()))
+        # Hadoop disabled by request
         if selection.use_spark:
             jobs.append(("spark", SparkRunner()))
         if selection.use_flink:
