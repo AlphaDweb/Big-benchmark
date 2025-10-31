@@ -143,6 +143,21 @@
           <span class="dot flink"></span> Flink
           <span class="muted" style="margin-left:auto">WordCount on synthetic data</span>
         </div>
+        <div style="margin-top:12px">
+          <div class="muted" style="margin-bottom:6px">Overall comparison (latest throughput)</div>
+          <div id="overall_bars" class="chart">
+            <div class="bar-row" data-fw="spark-overall">
+              <div class="bar-label">Spark</div>
+              <div class="bar-track"><div id="overall_spark_fill" class="bar-fill fw-spark"></div></div>
+              <div id="overall_spark_val" class="bar-value">0</div>
+            </div>
+            <div class="bar-row" data-fw="flink-overall">
+              <div class="bar-label">Flink</div>
+              <div class="bar-track"><div id="overall_flink_fill" class="bar-fill fw-flink"></div></div>
+              <div id="overall_flink_val" class="bar-value">0</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -233,6 +248,7 @@
     <div class="spinner"></div>
   </div>
 
+  <script src="/static/visuals.js"></script>
   <script>
     const resultsTbody = document.getElementById('results');
     const btnRun = document.getElementById('btn_run');
@@ -249,6 +265,10 @@
     };
     const sparkSvg = document.getElementById('spark_sparkline');
     const flinkSvg = document.getElementById('flink_sparkline');
+    const overallSparkFill = document.getElementById('overall_spark_fill');
+    const overallFlinkFill = document.getElementById('overall_flink_fill');
+    const overallSparkVal = document.getElementById('overall_spark_val');
+    const overallFlinkVal = document.getElementById('overall_flink_val');
     const speedupEl = document.getElementById('speedup');
     const sparkAvgEl = document.getElementById('spark_avg');
     const flinkAvgEl = document.getElementById('flink_avg');
@@ -267,6 +287,15 @@
     const chartEl = document.getElementById('chart');
     let chartState = { runId: null, iteration: null, maxThr: 0, byFw: { spark: 0, flink: 0 } };
     let history = { spark: [], flink: [] };
+    function updateOverallBars() {
+      const s = history.spark.length ? history.spark[history.spark.length-1] : 0;
+      const f = history.flink.length ? history.flink[history.flink.length-1] : 0;
+      const max = Math.max(1, s, f);
+      overallSparkFill.style.width = ((s / max) * 100).toFixed(1) + '%';
+      overallFlinkFill.style.width = ((f / max) * 100).toFixed(1) + '%';
+      overallSparkVal.textContent = s ? s.toFixed(1) : '0';
+      overallFlinkVal.textContent = f ? f.toFixed(1) : '0';
+    }
 
     function ensureRow(runId, iteration, fw) {
       const key = rowKey(runId, iteration, fw);
@@ -316,6 +345,7 @@
       history = { spark: [], flink: [] };
       drawSparkline(sparkSvg, []);
       drawSparkline(flinkSvg, []);
+      updateOverallBars();
       sparkAvgEl.textContent = 'avg 0';
       flinkAvgEl.textContent = 'avg 0';
     }
@@ -373,6 +403,7 @@
             drawSparkline(msg.framework === 'spark' ? sparkSvg : flinkSvg, history[msg.framework]);
             const avg = history[msg.framework].reduce((a,b)=>a+b,0) / history[msg.framework].length;
             (msg.framework === 'spark' ? sparkAvgEl : flinkAvgEl).textContent = `avg ${avg.toFixed(1)}`;
+            updateOverallBars();
           }
           // Speedup Spark vs Flink
           const s = history.spark.length ? history.spark[history.spark.length-1] : 0;
@@ -453,45 +484,8 @@
     };
   </script>
   <script>
-    // Minimal sparkline renderer (no external libs)
-    function drawSparkline(svg, data) {
-      if (!svg) return;
-      while (svg.firstChild) svg.removeChild(svg.firstChild);
-      const w = svg.clientWidth || (svg.parentElement ? svg.parentElement.clientWidth : 300) || 300;
-      const hAttr = svg.getAttribute('height');
-      const h = hAttr ? parseInt(hAttr) : 40;
-      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-      if (!data || data.length === 0) return;
-      const max = Math.max(...data);
-      const min = Math.min(...data);
-      const pad = 2;
-      const scaleX = (w - pad*2) / Math.max(1, data.length - 1);
-      const denom = Math.max(1e-6, (max - min) || 1);
-      const scaleY = (h - pad*2) / denom;
-      let d = '';
-      data.forEach((v, i) => {
-        const x = pad + i * scaleX;
-        const y = h - pad - (v - min) * scaleY;
-        d += (i === 0 ? 'M' : 'L') + x + ' ' + y + ' ';
-      });
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', d.trim());
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', 'var(--accent)');
-      path.setAttribute('stroke-width', '2');
-      svg.appendChild(path);
-      // Draw points so single-value series are visible
-      data.forEach((v, i) => {
-        const cx = pad + i * scaleX;
-        const cy = h - pad - (v - min) * scaleY;
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        dot.setAttribute('cx', cx);
-        dot.setAttribute('cy', cy);
-        dot.setAttribute('r', 2.5);
-        dot.setAttribute('fill', 'var(--accent)');
-        svg.appendChild(dot);
-      });
-    }
+    // Delegate to external visuals module
+    function drawSparkline(svg, data) { if (window.BB && window.BB.drawSparkline) window.BB.drawSparkline(svg, data); }
   </script>
 </body>
 </html>
