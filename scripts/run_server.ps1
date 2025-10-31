@@ -1,6 +1,6 @@
 param(
   [int]$Port = 8000,
-  [string]$Host = '127.0.0.1',
+  [string]$BindHost = '127.0.0.1',
   [switch]$NoBrowser,
   [switch]$SkipInstall
 )
@@ -48,14 +48,14 @@ if (-not $env:HADOOP_STREAMING_JAR) {
   }
 }
 
-Write-Host "Host: $Host  Port: $Port"
+Write-Host "Host: $BindHost  Port: $Port"
 
 Write-Host "Starting server on port $Port"
-Write-Host "Open http://$Host:$Port"
+Write-Host ("Open http://{0}:{1}" -f $BindHost, $Port)
 if (-not $NoBrowser) {
-  try { Start-Process "http://$Host:$Port" | Out-Null } catch {}
+  try { Start-Process ("http://{0}:{1}" -f $BindHost, $Port) | Out-Null } catch {}
 }
-python -m uvicorn backend.server:app --host $Host --port $Port --no-access-log
+python -m uvicorn backend.server:app --host $BindHost --port $Port --no-access-log
 
 
   
